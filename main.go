@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/base64"
 	"fmt"
 	"log"
 	"os"
@@ -24,10 +25,14 @@ func command(cmd string) (string, error) {
 }
 
 func E(s string) string {
-	return fmt.Sprintf("%#v", s)
+	res := fmt.Sprintf("%#v", s)
+	res = strings.ReplaceAll(res, "$", "\\$")
+	// res = strings.ReplaceAll(res, "\\\\", "\\")
+	return res
 }
 
 func main() {
+	// log.Printf(" = %+v\n", E("azzzzz $esp  "))
 	log.Printf("cmd = %+v\n", strings.Join(os.Args[1:], " "))
 	log.Printf("cmd = %+v\n", strings.Join(os.Args[1:], " "))
 	cmd := strings.Join(os.Args[1:], " ")
@@ -45,7 +50,7 @@ func main() {
 
 	WindowName, err := command("tmux display-message -p '#W'")
 	if err != nil {
-		log.Print(err)
+		log.Fatal("error:", err)
 	}
 	WindowName = strings.TrimSuffix(WindowName, "\n")
 	log.Printf("WindowName = %#v\n", WindowName)
@@ -53,8 +58,16 @@ func main() {
 	if strings.HasPrefix(cmd, "SEND ") {
 		if WindowName == GDBWindowname {
 			cmd := cmd[len("SEND "):]
-			log.Printf("cmd = %#v\n", cmd)
-			command(fmt.Sprintf("tmux send-keys -t %s %s C-m", E(fmt.Sprintf("%s:$", SessionName)), E(cmd)))
+
+			data, err := base64.StdEncoding.DecodeString(cmd)
+			if err != nil {
+				log.Fatal("error:", err)
+			}
+
+			fmt.Printf("%q\n", data)
+
+			log.Printf("cmd = %#v\n", string(data))
+			command(fmt.Sprintf("tmux send-keys -t %s %s C-m", E(fmt.Sprintf("%s:$", SessionName)), E(string(data))))
 
 		}
 	} else {
@@ -69,8 +82,8 @@ func main() {
 
 		log.Printf("cmd = %#v\n", cmd)
 
+		// command(fmt.Sprintf("tmux send-keys -t %s %s C-m", E(fmt.Sprintf("%s:$", SessionName)), E(fmt.Sprintf("sudo %s", cmd))))
 		command(fmt.Sprintf("tmux send-keys -t %s %s C-m", E(fmt.Sprintf("%s:$", SessionName)), E(cmd)))
 	}
 
-	os.Exit(0)
 }
